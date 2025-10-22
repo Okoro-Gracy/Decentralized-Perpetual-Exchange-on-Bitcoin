@@ -657,3 +657,33 @@
     (ok proposal-id)
   )
 )
+
+(define-public (vote-on-proposal (proposal-id uint) (vote bool) (voting-power uint))
+  (let (
+    (proposal (unwrap! (map-get? governance-proposals { proposal-id: proposal-id }) ERR_GOVERNANCE_PROPOSAL_NOT_FOUND))
+  )
+    (asserts! (<= stacks-block-height (get voting-end proposal)) ERR_INVALID_PARAMETER)
+    (asserts! (>= stacks-block-height (get voting-start proposal)) ERR_INVALID_PARAMETER)
+    
+    (map-set governance-votes
+      { proposal-id: proposal-id, voter: tx-sender }
+      {
+        vote: vote,
+        voting-power: voting-power,
+        timestamp: stacks-block-height
+      }
+    )
+    
+    (if vote
+      (map-set governance-proposals
+        { proposal-id: proposal-id }
+        (merge proposal { votes-for: (+ (get votes-for proposal) voting-power) })
+      )
+      (map-set governance-proposals
+        { proposal-id: proposal-id }
+        (merge proposal { votes-against: (+ (get votes-against proposal) voting-power) })
+      )
+    )
+    (ok true)
+  )
+)
